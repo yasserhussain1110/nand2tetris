@@ -70,13 +70,14 @@ CHIP CPU {
     And(a=instruction[15], b=instruction[5], out=isDtypewithdestA);
     Not(in=instruction[15], out=isAtype);
     Or(a=isAtype, b=isDtypewithdestA, out=shouldloadintoA);
-    Register(in=Ainput, load=shouldloadintoA, out=Aoutput, out[0..14]=addressM);  // This is A register
+    ARegister(in=Ainput, load=shouldloadintoA, out=Aoutput, out[0..14]=addressM);
 
     // Mux before ALU
     Mux16(a=Aoutput, b=inM, sel=instruction[12], out=AMmuxoutput);  // instruction[12] is 'a' control bit
 
     // D Register
-    Register(in=ALUoutput, load=instruction[4], out=Doutput);
+    And(a=instruction[15], b=instruction[4], out=loadinD);
+    DRegister(in=ALUoutput, load=loadinD, out=Doutput);
 
     // ALU
     ALU(x=Doutput, y=AMmuxoutput, zx=instruction[11], nx=instruction[10],
@@ -110,10 +111,13 @@ CHIP CPU {
     Mux8Way(a=false, b=isgreater, c=iszero, d=isnotneg,
             e=isneg, f=isnotzero, g=islessthanequal, h=true,
             sel=instruction[0..2],
-            out=isjump);
+            out=canjump);
 
-    // writeM simply depends on d3
-    And(a=true, b=instruction[3], out=writeM);
+    // jump or no jump depends on above condition and first instruction bit
+    And(a=instruction[15], b=canjump, out=isjump);
+
+    // writeM simply depends on d3 and first instruction bit
+    And(a=instruction[15], b=instruction[3], out=writeM);
 
     PC(in=Aoutput, load=isjump, inc=true, reset=reset, out[0..14]=pc);
 }
